@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -41,7 +42,7 @@ const C = {
 function WaveIcon() {
   return (
     <Image
-      source={require('biofloc_mobile/assets/images/logo_tambak.jpeg')}
+      source={require('../../assets/images/logo_tambak.jpeg')}
       style={styles.logoImage}
       resizeMode="cover"
     />
@@ -174,13 +175,15 @@ export default function LoginScreen() {
     setShowPassword((prev) => !prev);
   }, []);
 
+  const router = useRouter();
+
   const handleLogin = useCallback(() => {
-    // TODO: wire up auth
-  }, []);
+    router.replace('/(dashboard)/kolam');
+  }, [router]);
 
   const handleRegister = useCallback(() => {
-    // TODO: navigate to register
-  }, []);
+    router.replace('/(dashboard)/kolam');
+  }, [router]);
 
   return (
     <View style={styles.root}>
