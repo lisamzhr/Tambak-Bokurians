@@ -11,7 +11,8 @@
     "nitrate_mg_l": { "warning": 1837.0, "danger": 2112.0 },
     "do_mg_l": { "low": 4.0, "high": 8.0, "tolerance": 0.2 },
     "ph": { "low": 6.5, "high": 9.0, "tolerance": 0.1 },
-    "temperature_c": { "low": 27.0, "high": 30.0, "tolerance": 0.15 }
+    "temperature_c": { "low": 27.0, "high": 30.0, "tolerance": 0.15 },
+    "TSS_mg_l": {"low": 200, "high": 1000, "tolerance": 200}
   },
 
   "management": {

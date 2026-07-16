@@ -1,37 +1,9 @@
 {
-  "generated_at": "2026-07-16T15:33:26.241799",
+  "generated_at": "2026-07-16T23:26:20.971387",
   "profile": {
     "id": "tilapia_freshwater",
     "species": "Oreochromis niloticus (nila / Nile tilapia)",
     "source": "Gabungan beberapa studi BFT nila: (1) Growth/water quality of Nile tilapia in BFT at different pH (TAN <4.74 mg/L, nitrite <0.59 mg/L); (2) Carbon sources & C:N ratio for Nile tilapia BFT (rentang nyaman suhu/DO/pH mengacu Boyd & Tucker 1998)."
   },
-  "ponds": {
-    "Pond7": {
-      "predictions": {
-        "ammonia_mg_l": 1.218,
-        "nitrate_mg_l": 1775.714,
-        "do_mg_l": 5.843,
-        "ph": 6.847
-      },
-      "based_on_last_complete_date": {
-        "ammonia_mg_l_mean": "2021-09-20",
-        "nitrate_mg_l_mean": "2021-12-23",
-        "do_mg_l_mean": "2021-12-23",
-        "ph_mean": "2021-12-23"
-      },
-      "status": {
-        "ammonia_mg_l": "safe",
-        "nitrite_mg_l": null,
-        "nitrate_mg_l": "safe",
-        "do_mg_l": "safe",
-        "ph": "safe",
-        "temperature_c": null
-      },
-      "health_score": 100,
-      "health_label": "Baik",
-      "recommendations": [
-        "Kondisi diproyeksikan aman, lanjut monitoring rutin."
-      ]
-    }
-  }
+  "ponds": {}
 }
