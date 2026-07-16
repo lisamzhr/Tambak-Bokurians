@@ -1,0 +1,44 @@
+{
+  "profile_id": "tilapia_freshwater",
+  "species": "Oreochromis niloticus (nila / Nile tilapia)",
+  "system": "Biofloc Technology (BFT), air tawar",
+  "source": "Gabungan beberapa studi BFT nila: (1) Growth/water quality of Nile tilapia in BFT at different pH (TAN <4.74 mg/L, nitrite <0.59 mg/L); (2) Carbon sources & C:N ratio for Nile tilapia BFT (rentang nyaman suhu/DO/pH mengacu Boyd & Tucker 1998).",
+  "notes": "Rentang DO/pH/suhu di sini APROKSIMASI dari toleransi umum nila (bukan dari 1 eksperimen tunggal spesifik) — verifikasi lagi kalau mau dipakai produksi serius, beda strain/ukuran nila bisa beda toleransi. Threshold NITRATE khusus di-override jadi data-driven (percentile 75/95 dari histori IoTPond7), BUKAN dari literatur — karena skala nitrate literatur nila (~1-9 mg/L) jauh beda dari skala sensor dataset ini (~0-3470), kemungkinan beda unit/kalibrasi. Kalau pakai dataset lain, threshold nitrate ini perlu dihitung ulang.",
+
+  "thresholds": {
+    "ammonia_mg_l": { "warning": 3.0, "danger": 4.74 },
+    "nitrite_mg_l": { "warning": 0.4, "danger": 0.59 },
+    "nitrate_mg_l": { "warning": 1837.0, "danger": 2112.0 },
+    "do_mg_l": { "low": 4.0, "high": 8.0, "tolerance": 0.2 },
+    "ph": { "low": 6.5, "high": 9.0, "tolerance": 0.1 },
+    "temperature_c": { "low": 27.0, "high": 30.0, "tolerance": 0.15 }
+  },
+
+  "management": {
+    "cn_ratio_target": 20,
+    "tss_min_inoculum_mg_l": null,
+    "tss_overgrowth_risk_mg_l": null
+  },
+
+  "maturity_criteria": {
+    "consecutive_safe_days_required": 3,
+    "params_required": ["ammonia_mg_l"],
+    "notes": "Jurnal nila yang dipakai gak spesifik ngukur waktu stabilisasi harian (beda dari jurnal vannamei). Kriteria di sini pakai prinsip umum BFT: amonia harus stabil aman N hari berturut sebelum dianggap matang. Kolom nitrit sering gak tersedia di dataset freshwater umum (spt Kaggle aquaponics) -> params_required cuma ammonia, tambahkan nitrite kalau datamu punya."
+  },
+
+  "setup_guidance": {
+    "inoculum_percent_of_volume": null,
+    "inoculum_tss_source_mg_l": null,
+    "inoculum_target_tss_mg_l": null,
+    "estimated_maturity_days_with_inoculum": "7-14 (estimasi umum, belum ada studi inokulum spesifik nila yang dipakai di profile ini)",
+    "estimated_maturity_days_without_inoculum": "49-56 (7-8 minggu, angka umum biofloc formation dari literatur BFT general)",
+    "notes": "Belum ada jurnal spesifik nila soal dosis inokulum kayak punya vannamei -- kalau nemu, update angka di atas. Sementara pakai angka umum biofloc (McIntosh 2000, dikutip di jurnal vannamei: formasi microbial biofloc makan waktu 7-8 minggu tanpa inokulum)."
+  },
+
+  "stocking_guidance": {
+    "density_per_m3": 300,
+    "initial_weight_g": 1.68,
+    "source": "Carbon sources & C:N ratio for Nile tilapia BFT farming (fingerling nursery, 300 ekor/m3, berat awal 1.68+-0.05 g)",
+    "notes": "Densitas nila bervariasi cukup lebar tergantung fase & studi (25-300+/m3 tergantung ukuran ikan & tujuan nursery vs grow-out). Angka ini representatif fase awal BFT, bukan patokan mutlak -- sesuaikan sama ukuran bibit yang tersedia."
+  }
+}
