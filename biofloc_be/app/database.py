@@ -12,9 +12,7 @@ users_col = db["users"]
 
 
 def ensure_indexes():
-    readings_col.create_index(
-        [("pond_id", ASCENDING), ("date", ASCENDING)], unique=True
-    )
+    readings_col.create_index([("pond_id", 1), ("first_ts", 1)])
     ponds_col.create_index("pond_id", unique=True)
     profiles_col.create_index("profile_id", unique=True)
     users_col.create_index("username", unique=True)
