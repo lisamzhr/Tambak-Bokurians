@@ -1,15 +1,19 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.auth.security import decode_access_token
-from app.database import users_col
+from app.database import users_col, token_blacklist_col
 
 bearer_scheme = HTTPBearer()
-
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> dict:
-    username = decode_access_token(credentials.credentials)
+    token = credentials.credentials
+
+    if token_blacklist_col.find_one({"token": token}):
+        raise HTTPException(401, "Token sudah logout, silakan login ulang", headers={"WWW-Authenticate": "Bearer"})
+
+    username = decode_access_token(token)
     if not username:
         raise HTTPException(
             401, "Token tidak valid atau sudah expired", headers={"WWW-Authenticate": "Bearer"}

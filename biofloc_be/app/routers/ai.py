@@ -113,6 +113,19 @@ def get_ai_maturity(pond_id: str, current_user: dict = Depends(get_current_user)
     csv_path = export_db_to_temp_csv(pond_id)
     try:
         args = ["--csv", csv_path, "--profile", profile]
+
+        # pond_start: pakai created_at eksplisit kalau ada, fallback ke waktu
+        # pembuatan dokumen (ObjectId), fallback terakhir ke tanggal data (script bawaan)
+        pond_start = pond.get("created_at")
+        if pond_start and hasattr(pond_start, "strftime"):
+            args += ["--pond-start", pond_start.strftime("%Y-%m-%d")]
+        elif pond.get("_id") is not None:
+            args += ["--pond-start", pond["_id"].generation_time.strftime("%Y-%m-%d")]
+
+        used_inoculum = pond.get("used_inoculum")
+        if used_inoculum is not None:
+            args += ["--used-inoculum"] if used_inoculum else ["--no-inoculum"]
+
         result = run_ai_script("maturity_check.py", args)
     except Exception as e:
         if os.path.exists(csv_path): os.remove(csv_path)
@@ -149,6 +162,23 @@ def get_ai_health(pond_id: str, current_user: dict = Depends(get_current_user)):
     try:
         args = ["--csv", csv_path, "--profile", profile]
         result = run_ai_script("predict_health.py", args)
+    except Exception as e:
+        if os.path.exists(csv_path): os.remove(csv_path)
+        raise e
+
+    if os.path.exists(csv_path): os.remove(csv_path)
+    return result
+
+# ==================== ENDPOINT 4: DIAGNOSE NOW (kondisi sekarang, gak butuh histori) ====================
+@router.get("/{pond_id}/ai-diagnose")
+def get_ai_diagnose(pond_id: str, current_user: dict = Depends(get_current_user)):
+    pond = assert_owner(pond_id, current_user["username"])
+    profile = pond.get("profile_id", "tilapia_freshwater")
+
+    csv_path = export_db_to_temp_csv(pond_id)
+    try:
+        args = ["--csv", csv_path, "--profile", profile]
+        result = run_ai_script("diagnose_now.py", args)
     except Exception as e:
         if os.path.exists(csv_path): os.remove(csv_path)
         raise e
