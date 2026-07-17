@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -57,12 +58,21 @@ export default function PondDetailScreen() {
 
   return (
     <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={C.primary} />
+
       {/* App Bar */}
       <View style={[styles.appBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color={C.onSurface} />
+          <MaterialIcons name="arrow-back" size={24} color={C.onPrimary} />
         </TouchableOpacity>
-        <Text style={styles.appBarTitle}>{pond?.name || pond_id}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.appBarTitle}>{pond?.name || pond_id}</Text>
+          {pond && (
+            <Text style={styles.appBarSubtitle}>
+              {pond.profile_id.replace(/_/g, ' ').toUpperCase()} • {pond.volume_liters} L
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Tabs */}
@@ -888,13 +898,11 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
   },
   appBar: {
-    backgroundColor: C.surfaceContainerLowest,
+    backgroundColor: C.primary,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.surfaceContainer,
   },
   backButton: {
     padding: 4,
@@ -903,7 +911,13 @@ const styles = StyleSheet.create({
   appBarTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: C.onSurface,
+    color: C.onPrimary,
+  },
+  appBarSubtitle: {
+    fontSize: 12,
+    color: C.onPrimary,
+    opacity: 0.8,
+    marginTop: 2,
   },
   tabsContainer: {
     backgroundColor: C.surfaceContainerLowest,
