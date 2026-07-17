@@ -323,7 +323,17 @@ function TabReadings({ pondId }: { pondId: string }) {
     { field: 'temperature_c', label: 'Suhu', unit: '°C', color: '#e07b39', gradientId: 'grad_suhu' },
     { field: 'do_mg_l', label: 'DO', unit: 'mg/L', color: '#2e7d9f', gradientId: 'grad_do' },
     { field: 'ammonia_mg_l', label: 'Amonia', unit: 'mg/L', color: '#b5521e', gradientId: 'grad_amonia' },
+    { field: 'nitrite_mg_l', label: 'Nitrit', unit: 'mg/L', color: '#8e24aa', gradientId: 'grad_nitrite' },
+    { field: 'nitrate_mg_l', label: 'Nitrat', unit: 'mg/L', color: '#3949ab', gradientId: 'grad_nitrate' },
+    { field: 'TSS_mg_l', label: 'TSS', unit: 'mg/L', color: '#5d4037', gradientId: 'grad_tss' },
   ];
+
+  const formatValue = (val: any) => {
+    if (val == null) return '-';
+    const num = Number(val);
+    if (num % 1 === 0) return num.toFixed(0);
+    return num.toFixed(num < 10 ? 2 : 1);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.tabScrollContent}>
@@ -331,11 +341,11 @@ function TabReadings({ pondId }: { pondId: string }) {
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Pembacaan Terkini</Text>
         <Text style={styles.summaryTime}>{latest?.ts ? new Date(latest.ts).toLocaleString() : '-'}</Text>
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, { flexWrap: 'wrap', gap: 12, justifyContent: 'space-around' }]}>
           {FIELDS.map((f) => (
-            <View key={f.field} style={styles.summaryCell}>
+            <View key={f.field} style={[styles.summaryCell, { width: '22%', marginBottom: 8 }]}>
               <Text style={styles.summaryCellValue}>
-                {latest?.[f.field] != null ? Number(latest[f.field]).toFixed(1) : '-'}
+                {formatValue(latest?.[f.field])}
               </Text>
               <Text style={styles.summaryCellLabel}>{f.label}</Text>
               {f.unit ? <Text style={styles.summaryCellUnit}>{f.unit}</Text> : null}
@@ -344,18 +354,23 @@ function TabReadings({ pondId }: { pondId: string }) {
         </View>
       </View>
 
-      {/* 4 Charts */}
-      {FIELDS.map((f) => (
-        <LineChart
-          key={f.field}
-          readings={readings}
-          field={f.field}
-          label={f.label}
-          unit={f.unit}
-          color={f.color}
-          gradientId={f.gradientId}
-        />
-      ))}
+      {/* Charts (only if available) */}
+      {FIELDS.map((f) => {
+        const hasData = readings.some((r: any) => r[f.field] != null);
+        if (!hasData) return null;
+        return (
+          <LineChart
+            key={f.field}
+            readings={readings}
+            field={f.field}
+            label={f.label}
+            unit={f.unit}
+            color={f.color}
+            gradientId={f.gradientId}
+          />
+        );
+      })}
+
     </ScrollView>
   );
 }
