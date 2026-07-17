@@ -27,3 +27,13 @@ def decode_access_token(token: str) -> str | None:
         return payload.get("sub")
     except JWTError:
         return None
+
+
+def get_token_expiry(token: str) -> datetime | None:
+    """Ambil waktu expire dari token (buat disimpen sebagai expires_at di blacklist)."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        exp = payload.get("exp")
+        return datetime.fromtimestamp(exp, tz=timezone.utc) if exp else None
+    except JWTError:
+        return None
