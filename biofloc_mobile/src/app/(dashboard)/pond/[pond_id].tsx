@@ -38,6 +38,7 @@ const C = {
 const TABS = [
   { key: 'readings', label: 'Grafik' },
   { key: 'input', label: 'Input Manual' },
+  { key: 'diagnose', label: 'AI Diagnosa' },
   { key: 'setup', label: 'AI Setup' },
   { key: 'maturity', label: 'AI Maturitas' },
 ];
@@ -86,6 +87,7 @@ export default function PondDetailScreen() {
       <View style={styles.content}>
         {activeTab === 'readings' && <TabReadings pondId={pond_id} />}
         {activeTab === 'input' && <TabInput pondId={pond_id} />}
+        {activeTab === 'diagnose' && <TabAIDiagnose pondId={pond_id} />}
         {activeTab === 'setup' && <TabAISetup pondId={pond_id} />}
         {activeTab === 'maturity' && <TabAIMaturity pondId={pond_id} />}
       </View>
@@ -393,7 +395,166 @@ function TabInput({ pondId }: { pondId: string }) {
     </ScrollView>
   );
 }
+// ─── TAB AI DIAGNOSE ──────────────────────────────────────────────────────────
 
+function TabAIDiagnose({ pondId }: { pondId: string }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    aiService.getAIDiagnose(pondId)
+      .then(setData)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [pondId]);
+
+  if (loading) return <CenterLoader />;
+  if (error) return <EmptyState text={error} />;
+
+  const diag = data?.[pondId];
+
+  if (!diag) {
+    return (
+      <ScrollView contentContainerStyle={styles.tabScrollContent}>
+        <View style={[styles.card, { alignItems: 'center', paddingVertical: 40 }]}>
+          <MaterialIcons name="search-off" size={48} color={C.outlineVariant} style={{ marginBottom: 12 }} />
+          <Text style={[styles.cardTitle, { textAlign: 'center' }]}>Belum Ada Diagnosa</Text>
+          <Text style={[styles.cardText, { textAlign: 'center' }]}>Masukkan data sensor untuk mendapatkan diagnosa kondisi kolam.</Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  const getStatusColor = (status: string) => {
+    if (status === 'safe') return C.success;
+    if (status === 'warning') return C.warning;
+    if (status === 'danger') return C.error;
+    return C.outline;
+  };
+
+  const getStatusBg = (status: string) => {
+    if (status === 'safe') return '#e8f5e9';
+    if (status === 'warning') return '#fff8e1';
+    if (status === 'danger') return '#ffebee';
+    return C.surfaceContainer;
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'safe') return 'Aman';
+    if (status === 'warning') return 'Waspada';
+    if (status === 'danger') return 'Bahaya';
+    return 'Tidak Diketahui';
+  };
+
+  const getStatusIcon = (status: string): any => {
+    if (status === 'safe') return 'check-circle';
+    if (status === 'warning') return 'warning';
+    if (status === 'danger') return 'error';
+    return 'help';
+  };
+
+  const PARAM_LABELS: Record<string, { label: string; unit: string }> = {
+    temperature_c: { label: 'Suhu', unit: '°C' },
+    do_mg_l: { label: 'DO', unit: 'mg/L' },
+    ph: { label: 'pH', unit: '' },
+    ammonia_mg_l: { label: 'Amonia', unit: 'mg/L' },
+    nitrite_mg_l: { label: 'Nitrit', unit: 'mg/L' },
+    nitrate_mg_l: { label: 'Nitrat', unit: 'mg/L' },
+    TSS_mg_l: { label: 'TSS', unit: 'mg/L' },
+  };
+
+  const hasAnyDanger = Object.values(diag.status || {}).some((s: any) => s === 'danger');
+  const hasAnyWarning = Object.values(diag.status || {}).some((s: any) => s === 'warning');
+  const overallStatus = hasAnyDanger ? 'danger' : hasAnyWarning ? 'warning' : 'safe';
+
+  const asOfDate = diag.as_of ? new Date(diag.as_of).toLocaleString() : null;
+
+  return (
+    <ScrollView contentContainerStyle={styles.tabScrollContent}>
+
+      {/* ── Overall Status Banner ─────────────────────────────────────────── */}
+      <View style={[styles.diagBanner, { backgroundColor: getStatusBg(overallStatus) }]}>
+        <View style={[styles.diagBannerIconWrap, { backgroundColor: getStatusColor(overallStatus) + '22' }]}>
+          <MaterialIcons name={getStatusIcon(overallStatus)} size={36} color={getStatusColor(overallStatus)} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.diagBannerTitle, { color: getStatusColor(overallStatus) }]}>
+            {overallStatus === 'safe' ? 'Kondisi Normal' : overallStatus === 'warning' ? 'Perlu Perhatian' : 'Perlu Tindakan Segera'}
+          </Text>
+          {asOfDate && <Text style={styles.diagBannerTime}>Data per {asOfDate}</Text>}
+        </View>
+      </View>
+
+      {/* ── Parameter Grid ───────────────────────────────────────────────── */}
+      <Text style={styles.setupSectionLabel}>PARAMETER AIR</Text>
+      <View style={styles.gridContainer}>
+        {Object.entries(diag.values || {}).map(([key, value]: any) => {
+          const status = diag.status?.[key] || 'unknown';
+          const meta = PARAM_LABELS[key] || { label: key, unit: '' };
+          return (
+            <View key={key} style={[styles.diagParamCard, { borderTopColor: getStatusColor(status) }]}>
+              <View style={styles.diagParamHeader}>
+                <Text style={styles.diagParamLabel}>{meta.label.toUpperCase()}</Text>
+                <View style={[styles.diagStatusChip, { backgroundColor: getStatusColor(status) + '20' }]}>
+                  <MaterialIcons name={getStatusIcon(status)} size={12} color={getStatusColor(status)} />
+                  <Text style={[styles.diagStatusChipText, { color: getStatusColor(status) }]}>{getStatusLabel(status)}</Text>
+                </View>
+              </View>
+              <View style={styles.diagParamValueRow}>
+                <Text style={[styles.diagParamValue, { color: getStatusColor(status) }]}>{value}</Text>
+                {meta.unit ? <Text style={styles.diagParamUnit}>{meta.unit}</Text> : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* ── Recommendations ──────────────────────────────────────────────── */}
+      {diag.recommendations && diag.recommendations.length > 0 && (
+        <>
+          <Text style={styles.setupSectionLabel}>REKOMENDASI TINDAKAN</Text>
+          <View style={styles.card}>
+            {diag.recommendations.map((rec: string, idx: number) => (
+              <View key={idx} style={[styles.listItem, idx < diag.recommendations.length - 1 && { borderBottomWidth: 1, borderBottomColor: C.surfaceContainer, paddingBottom: 12 }]}>
+                <View style={styles.diagRecNumWrap}>
+                  <Text style={styles.diagRecNum}>{idx + 1}</Text>
+                </View>
+                <Text style={styles.listText}>{rec}</Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* ── TSS Status ───────────────────────────────────────────────────── */}
+      {diag.tss_note && (
+        <View style={styles.diagTssCard}>
+          <MaterialIcons name="science" size={20} color={C.warning} />
+          <Text style={styles.diagTssText}>{diag.tss_note}</Text>
+        </View>
+      )}
+
+      {/* ── Missing Fields ───────────────────────────────────────────────── */}
+      {diag.missing_fields && diag.missing_fields.length > 0 && (
+        <View style={[styles.card, { borderColor: C.outlineVariant }]}>
+          <View style={styles.listItem}>
+            <MaterialIcons name="info" size={18} color={C.outline} />
+            <Text style={[styles.setupStockStatLabel, { flex: 1 }]}>Data Belum Terkirim</Text>
+          </View>
+          <View style={styles.diagMissingWrap}>
+            {diag.missing_fields.map((f: string) => (
+              <View key={f} style={styles.diagMissingChip}>
+                <Text style={styles.diagMissingText}>{PARAM_LABELS[f]?.label || f}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+    </ScrollView>
+  );
+}
 
 function TabAISetup({ pondId }: { pondId: string }) {
   const [data, setData] = useState<any>(null);
@@ -589,8 +750,27 @@ function TabAIMaturity({ pondId }: { pondId: string }) {
         </Text>
       </View>
 
+      {/* Info Ringkas Kolam */}
+      <View style={styles.gridContainer}>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Mulai Kolam</Text>
+          <Text style={[styles.gridValue, { fontSize: 15, marginTop: 4 }]}>
+            {matData.pond_start_date || '-'}
+          </Text>
+          {matData.pond_start_date_is_assumed && (
+            <Text style={{ fontSize: 10, color: C.warning, fontStyle: 'italic', marginTop: 2 }}>*Asumsi</Text>
+          )}
+        </View>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Hari Berjalan</Text>
+          <Text style={[styles.gridValue, { fontSize: 20, marginTop: 4 }]}>
+            {matData.elapsed_days_since_pond_start ?? 0} hari
+          </Text>
+        </View>
+      </View>
+
       {/* Progress */}
-      <Text style={styles.sectionTitle}>Progress Stabilitas (Amonia Aman)</Text>
+      <Text style={styles.setupSectionLabel}>PROGRESS STABILITAS (AMONIA AMAN)</Text>
       <View style={styles.card}>
         <View style={styles.progressRow}>
           <Text style={styles.progressValue}>{amoniaDays}</Text>
@@ -600,6 +780,62 @@ function TabAIMaturity({ pondId }: { pondId: string }) {
         </View>
         <Text style={styles.messageText}>{matData.message}</Text>
       </View>
+
+      {/* Timeline Budidaya */}
+      {matData.journal_timeline && (
+        <>
+          <Text style={styles.setupSectionLabel}>ESTIMASI MATURITAS & SKENARIO</Text>
+
+          {matData.journal_timeline.note && (
+            <View style={[styles.setupInoculumTip, { backgroundColor: C.primary + '0d', borderColor: C.outlineVariant, borderWidth: 1, borderRadius: 12, marginBottom: 12 }]}>
+              <MaterialIcons name="info" size={20} color={C.primary} />
+              <Text style={styles.setupInoculumText}>{matData.journal_timeline.note}</Text>
+            </View>
+          )}
+
+          <View style={{ gap: 12 }}>
+            {matData.journal_timeline.if_used_inoculum && (
+              <View style={[styles.card, { borderLeftWidth: 4, borderLeftColor: C.success }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <MaterialIcons name="opacity" size={18} color={C.success} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.onSurface }}>Dengan Inokulum</Text>
+                </View>
+                <Text style={styles.cardText}>
+                  <Text style={{ fontWeight: '600' }}>Estimasi Jurnal:</Text> {matData.journal_timeline.if_used_inoculum.journal_estimated_days} hari
+                </Text>
+                {matData.journal_timeline.if_used_inoculum.estimated_target_date_range && (
+                  <Text style={styles.cardText}>
+                    <Text style={{ fontWeight: '600' }}>Target Tanggal:</Text> {matData.journal_timeline.if_used_inoculum.estimated_target_date_range.join(' s/d ')}
+                  </Text>
+                )}
+                <Text style={[styles.setupNoteText, { marginTop: 8 }]}>
+                  {matData.journal_timeline.if_used_inoculum.note}
+                </Text>
+              </View>
+            )}
+
+            {matData.journal_timeline.if_no_inoculum && (
+              <View style={[styles.card, { borderLeftWidth: 4, borderLeftColor: C.outline }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <MaterialIcons name="blur-off" size={18} color={C.outline} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: C.onSurface }}>Tanpa Inokulum</Text>
+                </View>
+                <Text style={styles.cardText}>
+                  <Text style={{ fontWeight: '600' }}>Estimasi Jurnal:</Text> {matData.journal_timeline.if_no_inoculum.journal_estimated_days} hari
+                </Text>
+                {matData.journal_timeline.if_no_inoculum.estimated_target_date_range && (
+                  <Text style={styles.cardText}>
+                    <Text style={{ fontWeight: '600' }}>Target Tanggal:</Text> {matData.journal_timeline.if_no_inoculum.estimated_target_date_range.join(' s/d ')}
+                  </Text>
+                )}
+                <Text style={[styles.setupNoteText, { marginTop: 8 }]}>
+                  {matData.journal_timeline.if_no_inoculum.note}
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Warnings */}
       {matData.params_missing_from_data && matData.params_missing_from_data.length > 0 && (
@@ -1220,5 +1456,131 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: C.onPrimary,
     opacity: 0.5,
+  },
+
+  // ─── AI DIAGNOSE STYLES ───────────────────────────────────────────────────
+  diagBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+  },
+  diagBannerIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  diagBannerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  diagBannerTime: {
+    fontSize: 11,
+    color: C.outline,
+  },
+  diagParamCard: {
+    width: '48%',
+    backgroundColor: C.surfaceContainerLowest,
+    borderRadius: 12,
+    borderTopWidth: 3,
+    borderWidth: 1,
+    borderColor: C.outlineVariant,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  diagParamHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  diagParamLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.outline,
+    letterSpacing: 0.5,
+  },
+  diagStatusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 20,
+  },
+  diagStatusChipText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  diagParamValueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  diagParamValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    lineHeight: 30,
+  },
+  diagParamUnit: {
+    fontSize: 12,
+    color: C.onSurfaceVariant,
+    marginBottom: 2,
+  },
+  diagRecNumWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  diagRecNum: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.onPrimary,
+  },
+  diagTssCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#fff8e1',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.warning + '55',
+    padding: 14,
+  },
+  diagTssText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: C.onSurface,
+    fontStyle: 'italic',
+  },
+  diagMissingWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  diagMissingChip: {
+    backgroundColor: C.surfaceContainer,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  diagMissingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.onSurfaceVariant,
   },
 });

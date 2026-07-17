@@ -11,5 +11,9 @@ export const aiService = {
 
   async getAIHealth(pondId: string) {
     return api.get(`/ponds/${pondId}/ai-health`);
-  }
+  },
+
+  async getAIDiagnose(pondId: string) {
+    return api.get(`/ponds/${pondId}/ai-diagnose`);
+  },
 };
