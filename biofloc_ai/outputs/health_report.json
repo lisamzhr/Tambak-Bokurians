@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-16T23:26:20.971387",
+  "generated_at": "2026-07-17T10:01:10.688146",
   "profile": {
-    "id": "tilapia_freshwater",
-    "species": "Oreochromis niloticus (nila / Nile tilapia)",
-    "source": "Gabungan beberapa studi BFT nila: (1) Growth/water quality of Nile tilapia in BFT at different pH (TAN <4.74 mg/L, nitrite <0.59 mg/L); (2) Carbon sources & C:N ratio for Nile tilapia BFT (rentang nyaman suhu/DO/pH mengacu Boyd & Tucker 1998)."
+    "id": "vannamei_marine",
+    "species": "Penaeus vannamei (udang vaname)",
+    "source": "Wasielesky et al. 2026, Aquaculture Journal 6(1):6"
   },
   "ponds": {}
 }

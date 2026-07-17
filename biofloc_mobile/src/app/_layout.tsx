@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { AuthProvider } from '../context/AuthContext';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
@@ -13,12 +14,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Login screen — no tab bar, full-screen */}
-        <Stack.Screen name="index" options={{ animation: 'none' }} />
-        {/* Dashboard group — has its own bottom nav */}
-        <Stack.Screen name="(dashboard)" options={{ animation: 'fade' }} />
-      </Stack>
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(dashboard)" />
+        </Stack>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

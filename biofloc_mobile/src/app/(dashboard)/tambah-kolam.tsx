@@ -10,6 +10,8 @@ import {
   Image,
   Platform,
   StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +23,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
+import { pondsService } from '../../services/ponds.service';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -115,11 +118,15 @@ function VolumeStepper({ value, onChange, step = 1, min = 0.5 }: VolumeStepperPr
     const next = Math.max(min, parseFloat((value + delta).toFixed(1)));
     onChange(next);
     // Micro-pop feedback
-    numScale.value = withSpring(1.15, { damping: 12 }, () => {
-      numScale.value = withSpring(1, { damping: 14 });
+    numScale.value = withSpring(1.15, { damping: 12 }, (finished) => {
+      if (finished) {
+        numScale.value = withSpring(1, { damping: 14 });
+      }
     });
-    numColor.value = withTiming(1, { duration: 80 }, () => {
-      numColor.value = withTiming(0, { duration: 300 });
+    numColor.value = withTiming(1, { duration: 80 }, (finished) => {
+      if (finished) {
+        numColor.value = withTiming(0, { duration: 300 });
+      }
     });
   }, [value, onChange, numScale, numColor, min]);
 
@@ -136,9 +143,9 @@ function VolumeStepper({ value, onChange, step = 1, min = 0.5 }: VolumeStepperPr
 
       <View style={styles.stepperValueRow}>
         <Animated.Text style={[styles.stepperValue, numStyle]}>
-          {value.toFixed(1)}
+          {value.toFixed(0)}
         </Animated.Text>
-        <Text style={styles.stepperUnit}>m³</Text>
+        <Text style={styles.stepperUnit}>L</Text>
       </View>
 
       <ScalePressable style={styles.stepperBtn} onPress={() => handleStep(step)}>
@@ -160,17 +167,40 @@ export default function TambahKolamScreen() {
 
   const [namaKolam, setNamaKolam] = useState('');
   const [jenisHewan, setJenisHewan] = useState<'nila' | 'udang'>('nila');
-  const [volume, setVolume] = useState(25.0);
-  const [namaFocused, setNamaFocused] = useState(false);
+  const [volume, setVolume] = useState(1500);
+  const [loading, setLoading] = useState(false);
 
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
 
-  const handleLanjutkan = useCallback(() => {
-    // TODO: save and navigate to next step
-    console.log('Lanjutkan:', { namaKolam, jenisHewan, volume });
-  }, [namaKolam, jenisHewan, volume]);
+  const handleLanjutkan = useCallback(async () => {
+    if (!namaKolam.trim()) {
+      Alert.alert('Error', 'Nama kolam tidak boleh kosong');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const pondId = namaKolam.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const profileId = jenisHewan === 'nila' ? 'tilapia_freshwater' : 'vannamei_marine';
+      
+      await pondsService.createPond({
+        pond_id: pondId,
+        profile_id: profileId,
+        name: namaKolam.trim(),
+        volume_liters: volume,
+      });
+      
+      Alert.alert('Sukses', 'Kolam berhasil ditambahkan', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Gagal menambahkan kolam');
+    } finally {
+      setLoading(false);
+    }
+  }, [namaKolam, jenisHewan, volume, router]);
 
   const jenisOptions = [
     { value: 'nila', label: 'Nila', icon: 'water-drop' as const },
@@ -221,7 +251,7 @@ export default function TambahKolamScreen() {
           {/* Nama Kolam */}
           <View style={styles.fieldGroup}>
             <FieldLabel label="Nama Kolam" />
-            <View style={[styles.inputContainer, namaFocused && styles.inputContainerFocused]}>
+            <View style={styles.inputContainer}>
               <MaterialIcons name="water-drop" size={20} color={C.outline} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
@@ -229,8 +259,6 @@ export default function TambahKolamScreen() {
                 placeholderTextColor={`${C.outline}99`}
                 value={namaKolam}
                 onChangeText={setNamaKolam}
-                onFocus={() => setNamaFocused(true)}
-                onBlur={() => setNamaFocused(false)}
                 autoCapitalize="words"
                 returnKeyType="done"
               />
@@ -249,8 +277,8 @@ export default function TambahKolamScreen() {
 
           {/* Volume Kolam */}
           <View style={styles.fieldGroup}>
-            <FieldLabel label="Volume Kolam (m³)" />
-            <VolumeStepper value={volume} onChange={setVolume} />
+            <FieldLabel label="Volume Kolam (Liter)" />
+            <VolumeStepper value={volume} onChange={setVolume} step={100} min={100} />
           </View>
 
         </View>
@@ -264,9 +292,16 @@ export default function TambahKolamScreen() {
             onPressOut={() => { ctaBtnScale.value = withSpring(1, { damping: 20 }); }}
             onPress={handleLanjutkan}
             style={styles.ctaButton}
+            disabled={loading}
           >
-            <Text style={styles.ctaButtonText}>Lanjutkan</Text>
-            <MaterialIcons name="arrow-forward" size={22} color={C.onPrimary} />
+            {loading ? (
+              <ActivityIndicator color={C.onPrimary} />
+            ) : (
+              <>
+                <Text style={styles.ctaButtonText}>Lanjutkan</Text>
+                <MaterialIcons name="arrow-forward" size={22} color={C.onPrimary} />
+              </>
+            )}
           </Pressable>
         </Animated.View>
       </View>

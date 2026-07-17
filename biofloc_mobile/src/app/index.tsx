@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 import {
   View,
   Text,
@@ -10,6 +11,8 @@ import {
   Pressable,
   Platform,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,56 +52,6 @@ function WaveIcon() {
   );
 }
 
-// ─── InputField ───────────────────────────────────────────────────────────────
-interface InputFieldProps {
-  label: string;
-  placeholder: string;
-  iconLabel: string;
-  secureTextEntry?: boolean;
-  value: string;
-  onChangeText: (text: string) => void;
-  rightElement?: React.ReactNode;
-}
-
-function InputField({
-  label,
-  placeholder,
-  secureTextEntry = false,
-  value,
-  onChangeText,
-  rightElement,
-}: InputFieldProps) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={styles.fieldWrapper}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View
-        style={[
-          styles.inputContainer,
-          focused && styles.inputContainerFocused,
-        ]}
-      >
-        {/* Left icon placeholder — using a colored dot as icon stand-in */}
-        <View style={styles.inputIconDot} />
-        <TextInput
-          style={styles.input}
-          placeholder={placeholder}
-          placeholderTextColor={C.slateGray50}
-          secureTextEntry={secureTextEntry}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {rightElement}
-      </View>
-    </View>
-  );
-}
-
 // ─── Divider with label ───────────────────────────────────────────────────────
 function DividerWithLabel({ label }: { label: string }) {
   return (
@@ -128,7 +81,7 @@ function SocialButton({ children }: { children: React.ReactNode }) {
 }
 
 // ─── PrimaryButton ────────────────────────────────────────────────────────────
-function PrimaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+function PrimaryButton({ label, onPress, loading }: { label: string; onPress: () => void; loading?: boolean }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -138,17 +91,24 @@ function PrimaryButton({ label, onPress }: { label: string; onPress: () => void 
         onPressOut={() => { scale.value = withSpring(1, { damping: 20 }); }}
         onPress={onPress}
         style={styles.primaryButton}
+        disabled={loading}
       >
-        <Text style={styles.primaryButtonText}>{label}</Text>
-        {/* Arrow → */}
-        <Text style={styles.primaryButtonArrow}>→</Text>
+        {loading ? (
+          <ActivityIndicator color={C.white} />
+        ) : (
+          <>
+            <Text style={styles.primaryButtonText}>{label}</Text>
+            {/* Arrow → */}
+            <Text style={styles.primaryButtonArrow}>→</Text>
+          </>
+        )}
       </Pressable>
     </Animated.View>
   );
 }
 
 // ─── SecondaryButton ──────────────────────────────────────────────────────────
-function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+function SecondaryButton({ label, onPress, loading }: { label: string; onPress: () => void; loading?: boolean }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -158,8 +118,13 @@ function SecondaryButton({ label, onPress }: { label: string; onPress: () => voi
         onPressOut={() => { scale.value = withSpring(1, { damping: 20 }); }}
         onPress={onPress}
         style={styles.secondaryButton}
+        disabled={loading}
       >
-        <Text style={styles.secondaryButtonText}>{label}</Text>
+        {loading ? (
+          <ActivityIndicator color={C.oceanTeal} />
+        ) : (
+          <Text style={styles.secondaryButtonText}>{label}</Text>
+        )}
       </Pressable>
     </Animated.View>
   );
@@ -175,15 +140,43 @@ export default function LoginScreen() {
     setShowPassword((prev) => !prev);
   }, []);
 
+  const [loadingLogin, setLoadingLogin] = useState(false);
+  const [loadingRegister, setLoadingRegister] = useState(false);
+
+  const { login, register } = useAuth();
   const router = useRouter();
 
-  const handleLogin = useCallback(() => {
-    router.replace('/(dashboard)/kolam');
-  }, [router]);
+  const handleLogin = useCallback(async () => {
+    if (!identifier || !password) {
+      Alert.alert('Error', 'Username dan password harus diisi');
+      return;
+    }
+    setLoadingLogin(true);
+    try {
+      await login(identifier, password);
+      // navigation handled by AuthContext
+    } catch (e: any) {
+      Alert.alert('Login Gagal', e.message);
+    } finally {
+      setLoadingLogin(false);
+    }
+  }, [identifier, password, login]);
 
-  const handleRegister = useCallback(() => {
-    router.replace('/(dashboard)/kolam');
-  }, [router]);
+  const handleRegister = useCallback(async () => {
+    if (!identifier || !password) {
+      Alert.alert('Error', 'Username dan password harus diisi');
+      return;
+    }
+    setLoadingRegister(true);
+    try {
+      await register(identifier, password);
+      // navigation handled by AuthContext
+    } catch (e: any) {
+      Alert.alert('Registrasi Gagal', e.message);
+    } finally {
+      setLoadingRegister(false);
+    }
+  }, [identifier, password, register]);
 
   return (
     <View style={styles.root}>
@@ -229,28 +222,42 @@ export default function LoginScreen() {
         {/* Form */}
         <View style={styles.formSection}>
           {/* Identifier */}
-          <InputField
-            label="Nomor HP / Email"
-            placeholder="Masukkan nomor atau email"
-            iconLabel="person"
-            value={identifier}
-            onChangeText={setIdentifier}
-          />
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>Nomor HP / Email</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIconDot} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan nomor atau email"
+                placeholderTextColor={C.slateGray50}
+                value={identifier}
+                onChangeText={setIdentifier}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
 
           {/* Password */}
-          <InputField
-            label="Kata Sandi"
-            placeholder="Masukkan kata sandi"
-            iconLabel="lock"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-            rightElement={
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.fieldLabel}>Kata Sandi</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIconDot} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan kata sandi"
+                placeholderTextColor={C.slateGray50}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
               <TouchableOpacity onPress={togglePassword} style={styles.eyeButton} hitSlop={8}>
                 <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
               </TouchableOpacity>
-            }
-          />
+            </View>
+          </View>
 
           {/* Forgot password */}
           <View style={styles.forgotRow}>
@@ -261,8 +268,8 @@ export default function LoginScreen() {
 
           {/* CTA buttons */}
           <View style={styles.ctaSection}>
-            <PrimaryButton label="Masuk" onPress={handleLogin} />
-            <SecondaryButton label="Daftar Akun Baru" onPress={handleRegister} />
+            <PrimaryButton label="Masuk" onPress={handleLogin} loading={loadingLogin} />
+            <SecondaryButton label="Daftar Akun Baru" onPress={handleRegister} loading={loadingRegister} />
           </View>
         </View>
 

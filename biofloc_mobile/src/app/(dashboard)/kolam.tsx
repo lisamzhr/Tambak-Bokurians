@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Pressable,
   Platform,
   StatusBar,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -17,7 +19,9 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
+import { pondsService, Pond } from '../../services/ponds.service';
 
 // ─── Design Tokens (mirrored from Figma colour tokens) ───────────────────────
 const C = {
@@ -146,13 +150,42 @@ export default function KolamScreen() {
   const cardOpacity = useSharedValue(0);
   const cardTranslate = useSharedValue(24);
 
+  // Fetching state
+  const { username } = useAuth();
+  const [ponds, setPonds] = useState<Pond[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const fetchPonds = async () => {
+        setLoading(true);
+        try {
+          const data = await pondsService.listPonds();
+          if (isActive) setPonds(data);
+        } catch (error) {
+          console.error("Failed to fetch ponds", error);
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+      fetchPonds();
+      
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      cardOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.quad) });
-      cardTranslate.value = withSpring(0, { damping: 18, stiffness: 120 });
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, [cardOpacity, cardTranslate]);
+    if (!loading && ponds.length === 0) {
+      const timeout = setTimeout(() => {
+        cardOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.quad) });
+        cardTranslate.value = withSpring(0, { damping: 18, stiffness: 120 });
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, ponds.length, cardOpacity, cardTranslate]);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
     opacity: cardOpacity.value,
@@ -180,31 +213,59 @@ export default function KolamScreen() {
       {/* ── Fixed Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Kolam Saya</Text>
-        <Text style={styles.headerGreeting}>Halo, Pak Budi 👋</Text>
+        <Text style={styles.headerGreeting}>Halo, {username || 'Petambak'} 👋</Text>
       </View>
 
       {/* ── Main Content ── */}
-      <View style={[styles.content, { paddingBottom: BOTTOM_NAV_HEIGHT + 24 }]}>
-        <Animated.View style={[styles.emptyCard, cardAnimStyle]}>
-
-          {/* Water icon */}
-          <WaterDropIcon />
-
-          {/* Headline */}
-          <Text style={styles.emptyTitle}>Belum ada kolam terdaftar</Text>
-
-          {/* Body */}
-          <Text style={styles.emptyBody}>
-            Yuk tambahkan kolam pertamamu untuk mulai memantau kondisi air dan pertumbuhan ikan secara akurat.
-          </Text>
-
-          {/* Decorative info row */}
-          <View style={styles.infoRow}>
-            <MaterialIcons name="info-outline" size={14} color={C.outline} style={{ opacity: 0.7 }} />
-            <Text style={styles.infoText}>Butuh bantuan pengaturan?</Text>
-          </View>
-
-        </Animated.View>
+      <View style={[
+        styles.content,
+        { paddingBottom: BOTTOM_NAV_HEIGHT + 24 },
+        (loading || ponds.length === 0) && styles.centerContent
+      ]}>
+        {loading ? (
+          <ActivityIndicator size="large" color={C.primary} />
+        ) : ponds.length === 0 ? (
+          <Animated.View style={[styles.emptyCard, cardAnimStyle]}>
+            {/* Water icon */}
+            <WaterDropIcon />
+            {/* Headline */}
+            <Text style={styles.emptyTitle}>Belum ada kolam terdaftar</Text>
+            {/* Body */}
+            <Text style={styles.emptyBody}>
+              Yuk tambahkan kolam pertamamu untuk mulai memantau kondisi air dan pertumbuhan ikan secara akurat.
+            </Text>
+            {/* Decorative info row */}
+            <View style={styles.infoRow}>
+              <MaterialIcons name="info-outline" size={14} color={C.outline} style={{ opacity: 0.7 }} />
+              <Text style={styles.infoText}>Butuh bantuan pengaturan?</Text>
+            </View>
+          </Animated.View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
+            {ponds.map((pond) => (
+              <TouchableOpacity
+                key={pond.pond_id}
+                style={styles.pondCard}
+                onPress={() => router.push(`/(dashboard)/pond/${pond.pond_id}` as any)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.pondCardContent}>
+                  <Text style={styles.pondCardName}>{pond.name || pond.pond_id}</Text>
+                  <View style={styles.pondCardBadges}>
+                    <View style={styles.badge}>
+                      <MaterialIcons name={pond.profile_id.includes('tilapia') ? 'water-drop' : 'restaurant'} size={14} color={C.primary} />
+                      <Text style={styles.badgeText}>{pond.profile_id.replace('_', ' ')}</Text>
+                    </View>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pond.volume_liters} m³</Text>
+                    </View>
+                  </View>
+                </View>
+                <MaterialIcons name="chevron-right" size={24} color={C.outline} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* ── FAB ── */}
@@ -262,6 +323,8 @@ const styles = StyleSheet.create({
   // ── Content ──
   content: {
     flex: 1,
+  },
+  centerContent: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -383,5 +446,58 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: C.primary,
     opacity: 1,
+  },
+
+  // ── List styles ──
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 80, // for FAB
+    gap: 16,
+  },
+  pondCard: {
+    backgroundColor: C.surfaceContainerLowest,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: C.surfaceContainer,
+    // Shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  pondCardContent: {
+    flex: 1,
+  },
+  pondCardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: C.onSurface,
+    marginBottom: 8,
+  },
+  pondCardBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surfaceContainer,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.onSurfaceVariant,
+    textTransform: 'capitalize',
   },
 });
