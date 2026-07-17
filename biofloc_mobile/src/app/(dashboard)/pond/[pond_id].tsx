@@ -11,7 +11,10 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  Image,
 } from 'react-native';
+
+const logoImg = require('../../../../assets/images/logo_tambak.jpeg');
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,11 +40,11 @@ const C = {
 };
 
 const TABS = [
-  { key: 'readings', label: 'Grafik' },
-  { key: 'input', label: 'Input Manual' },
-  { key: 'diagnose', label: 'AI Diagnosa' },
-  { key: 'setup', label: 'AI Setup' },
-  { key: 'maturity', label: 'AI Maturitas' },
+  { key: 'readings', label: 'Grafik', icon: 'bar-chart' },
+  { key: 'input', label: 'Input', icon: 'edit' },
+  { key: 'diagnose', label: 'AI Diagnosa', icon: 'psychology' },
+  { key: 'setup', label: 'AI Setup', icon: 'tune' },
+  { key: 'maturity', label: 'AI Maturitas', icon: 'opacity' },
 ];
 
 export default function PondDetailScreen() {
@@ -75,31 +78,42 @@ export default function PondDetailScreen() {
         </View>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {TABS.map((tab) => {
-            const isActive = tab.key === activeTab;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tabButton, isActive && styles.tabButtonActive]}
-                onPress={() => setActiveTab(tab.key)}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
       {/* Content */}
       <View style={styles.content}>
+        {/* Faded Background Logo */}
+        <View style={styles.bgImageContainer} pointerEvents="none">
+          <Image source={logoImg} style={styles.bgImage} />
+        </View>
+
         {activeTab === 'readings' && <TabReadings pondId={pond_id} />}
         {activeTab === 'input' && <TabInput pondId={pond_id} />}
         {activeTab === 'diagnose' && <TabAIDiagnose pondId={pond_id} />}
         {activeTab === 'setup' && <TabAISetup pondId={pond_id} />}
         {activeTab === 'maturity' && <TabAIMaturity pondId={pond_id} />}
+      </View>
+
+      {/* Bottom Tab Bar */}
+      <View style={[styles.bottomTabBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        {TABS.map((tab) => {
+          const isActive = tab.key === activeTab;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.bottomTabButton}
+              onPress={() => setActiveTab(tab.key)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name={tab.icon as any}
+                size={22}
+                color={isActive ? C.primary : '#8e9293'}
+              />
+              <Text style={[styles.bottomTabText, isActive && styles.bottomTabTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -370,18 +384,40 @@ function TabReadings({ pondId }: { pondId: string }) {
           />
         );
       })}
-
     </ScrollView>
   );
 }
 
+function ManualInputField({ label, value, onChangeText, keyboardType, unit }: any) {
+  return (
+    <View style={styles.manualFieldGroup}>
+      <Text style={styles.manualFieldLabel}>{label}</Text>
+      <View style={styles.manualInputWrapper}>
+        <TextInput
+          style={styles.manualTextInput}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          placeholder="0.0"
+          placeholderTextColor="#a0a8a7"
+        />
+        {unit ? <Text style={styles.manualInputSuffix}>{unit}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 function TabInput({ pondId }: { pondId: string }) {
+  const [activeSegment, setActiveSegment] = useState<'manual' | 'sensor'>('manual');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     ph: '',
     temperature_c: '',
     do_mg_l: '',
     ammonia_mg_l: '',
+    nitrite_mg_l: '',
+    nitrate_mg_l: '',
+    TSS_mg_l: '',
   });
 
   const handleSubmit = async () => {
@@ -393,9 +429,20 @@ function TabInput({ pondId }: { pondId: string }) {
         temperature_c: form.temperature_c ? parseFloat(form.temperature_c) : undefined,
         do_mg_l: form.do_mg_l ? parseFloat(form.do_mg_l) : undefined,
         ammonia_mg_l: form.ammonia_mg_l ? parseFloat(form.ammonia_mg_l) : undefined,
+        nitrite_mg_l: form.nitrite_mg_l ? parseFloat(form.nitrite_mg_l) : undefined,
+        nitrate_mg_l: form.nitrate_mg_l ? parseFloat(form.nitrate_mg_l) : undefined,
+        TSS_mg_l: form.TSS_mg_l ? parseFloat(form.TSS_mg_l) : undefined,
       });
       Alert.alert('Sukses', 'Data manual berhasil disimpan');
-      setForm({ ph: '', temperature_c: '', do_mg_l: '', ammonia_mg_l: '' });
+      setForm({
+        ph: '',
+        temperature_c: '',
+        do_mg_l: '',
+        ammonia_mg_l: '',
+        nitrite_mg_l: '',
+        nitrate_mg_l: '',
+        TSS_mg_l: '',
+      });
     } catch (e: any) {
       Alert.alert('Error', e.message);
     } finally {
@@ -405,18 +452,53 @@ function TabInput({ pondId }: { pondId: string }) {
 
   return (
     <ScrollView contentContainerStyle={styles.tabScrollContent}>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Input Parameter Air</Text>
-        
-        <InputField label="pH" value={form.ph} onChangeText={(v) => setForm({...form, ph: v})} keyboardType="numeric" />
-        <InputField label="Suhu (°C)" value={form.temperature_c} onChangeText={(v) => setForm({...form, temperature_c: v})} keyboardType="numeric" />
-        <InputField label="DO (mg/L)" value={form.do_mg_l} onChangeText={(v) => setForm({...form, do_mg_l: v})} keyboardType="numeric" />
-        <InputField label="Amonia (mg/L)" value={form.ammonia_mg_l} onChangeText={(v) => setForm({...form, ammonia_mg_l: v})} keyboardType="numeric" />
-
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Simpan Data</Text>}
+      {/* Segmented Control */}
+      <View style={styles.segmentedControl}>
+        <TouchableOpacity
+          style={activeSegment === 'manual' ? styles.segmentedButtonActive : styles.segmentedButtonInactive}
+          onPress={() => setActiveSegment('manual')}
+          activeOpacity={0.9}
+        >
+          <Text style={activeSegment === 'manual' ? styles.segmentedTextActive : styles.segmentedTextInactive}>
+            Input Manual
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={activeSegment === 'sensor' ? styles.segmentedButtonActive : styles.segmentedButtonInactive}
+          onPress={() => setActiveSegment('sensor')}
+          activeOpacity={0.9}
+        >
+          <Text style={activeSegment === 'sensor' ? styles.segmentedTextActive : styles.segmentedTextInactive}>
+            Data Sensor
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {activeSegment === 'manual' ? (
+        <View style={styles.card}>
+          <Text style={styles.manualCardTitle}>Parameter Kualitas Air</Text>
+          
+          <ManualInputField label="Kadar pH" value={form.ph} onChangeText={(v) => setForm({...form, ph: v})} keyboardType="numeric" unit="pH" />
+          <ManualInputField label="Suhu Air" value={form.temperature_c} onChangeText={(v) => setForm({...form, temperature_c: v})} keyboardType="numeric" unit="°C" />
+          <ManualInputField label="Kadar DO" value={form.do_mg_l} onChangeText={(v) => setForm({...form, do_mg_l: v})} keyboardType="numeric" unit="mg/L" />
+          <ManualInputField label="Kadar Amonia" value={form.ammonia_mg_l} onChangeText={(v) => setForm({...form, ammonia_mg_l: v})} keyboardType="numeric" unit="mg/L" />
+          <ManualInputField label="Kadar Nitrit" value={form.nitrite_mg_l} onChangeText={(v) => setForm({...form, nitrite_mg_l: v})} keyboardType="numeric" unit="mg/L" />
+          <ManualInputField label="Kadar Nitrat" value={form.nitrate_mg_l} onChangeText={(v) => setForm({...form, nitrate_mg_l: v})} keyboardType="numeric" unit="mg/L" />
+          <ManualInputField label="Kadar TSS" value={form.TSS_mg_l} onChangeText={(v) => setForm({...form, TSS_mg_l: v})} keyboardType="numeric" unit="mg/L" />
+
+          <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Simpan Data</Text>}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.card, { alignItems: 'center', paddingVertical: 40, borderStyle: 'dashed' }]}>
+          <MaterialIcons name="settings-input-antenna" size={48} color={C.outlineVariant} style={{ marginBottom: 16 }} />
+          <Text style={[styles.cardTitle, { textAlign: 'center', marginBottom: 8 }]}>Koneksi Sensor IoT</Text>
+          <Text style={[styles.cardText, { textAlign: 'center', lineHeight: 22 }]}>
+            Data sensor diperbarui secara otomatis oleh perangkat biofloc IoT yang terpasang di kolam. Silakan periksa grafik tren atau hubungi admin jika perangkat Anda belum terintegrasi.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -722,7 +804,9 @@ function TabAISetup({ pondId }: { pondId: string }) {
                 <MaterialIcons name="send" size={20} color={C.primary} style={{ marginTop: 2 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.setupStockStatLabel, { marginBottom: 4 }]}>Langkah Berikutnya</Text>
-                  <Text style={styles.listText}>{rec.next_step}</Text>
+                  <Text style={styles.listText}>
+                    {typeof rec.next_step === 'string' ? rec.next_step.replace(/\.py/g, '') : rec.next_step}
+                  </Text>
                 </View>
               </View>
             ) : null}
@@ -934,29 +1018,32 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginTop: 2,
   },
-  tabsContainer: {
+  bottomTabBar: {
+    flexDirection: 'row',
     backgroundColor: C.surfaceContainerLowest,
-    borderBottomWidth: 1,
-    borderBottomColor: C.surfaceContainer,
+    borderTopWidth: 1,
+    borderTopColor: C.surfaceContainer,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  tabsScroll: {
-    paddingHorizontal: 8,
+  bottomTabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
-  tabButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabButtonActive: {
-    borderBottomColor: C.primary,
-  },
-  tabText: {
-    fontSize: 14,
+  bottomTabText: {
+    fontSize: 10,
     fontWeight: '600',
-    color: C.onSurfaceVariant,
+    color: '#8e9293',
   },
-  tabTextActive: {
+  bottomTabTextActive: {
     color: C.primary,
   },
   content: {
@@ -1611,5 +1698,89 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: C.onSurfaceVariant,
+  },
+
+  // ─── REDESIGNED MANUAL INPUT STYLES ───────────────────────────────────────
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#eceeef',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 8,
+  },
+  segmentedButtonActive: {
+    flex: 1,
+    backgroundColor: C.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  segmentedButtonInactive: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  segmentedTextActive: {
+    color: C.onPrimary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  segmentedTextInactive: {
+    color: '#4d6262',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  manualCardTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: C.primary,
+    marginBottom: 20,
+  },
+  manualFieldGroup: {
+    marginBottom: 16,
+  },
+  manualFieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3c4948',
+    marginBottom: 8,
+  },
+  manualInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f3f4',
+    borderWidth: 1,
+    borderColor: '#e1e3e4',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  manualTextInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#191c1d',
+    paddingVertical: 8,
+  },
+  manualInputSuffix: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8e9293',
+    marginLeft: 8,
+  },
+  bgImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bgImage: {
+    width: 650,
+    height: 650,
+    opacity: 0.15,
+    borderRadius: 325,
   },
 });

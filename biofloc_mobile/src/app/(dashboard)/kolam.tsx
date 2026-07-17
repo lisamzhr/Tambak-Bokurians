@@ -545,8 +545,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bgImage: {
-    width: 450,
-    height: 450,
+    width: 650,
+    height: 650,
     opacity: 0.15,
     borderRadius: 225,
   },
