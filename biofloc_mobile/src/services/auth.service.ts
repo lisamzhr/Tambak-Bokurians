@@ -16,8 +16,14 @@ export const authService = {
   },
 
   async logout() {
-    await AsyncStorage.removeItem('jwt_token');
-    await AsyncStorage.removeItem('username');
+    try {
+      await api.post('/auth/logout', {});
+    } catch (e) {
+      console.warn('Backend logout failed or offline', e);
+    } finally {
+      await AsyncStorage.removeItem('jwt_token');
+      await AsyncStorage.removeItem('username');
+    }
   },
 
   async getToken() {

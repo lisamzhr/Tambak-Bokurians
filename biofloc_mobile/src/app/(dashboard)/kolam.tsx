@@ -9,8 +9,11 @@ import {
   StatusBar,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const logoImg = require('../../../assets/images/logo_tambak.jpeg');
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -151,9 +154,17 @@ export default function KolamScreen() {
   const cardTranslate = useSharedValue(24);
 
   // Fetching state
-  const { username } = useAuth();
+  const { username, logout } = useAuth();
   const [ponds, setPonds] = useState<Pond[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Failed to logout", error);
+    }
+  }, [logout]);
 
   useFocusEffect(
     useCallback(() => {
@@ -212,7 +223,12 @@ export default function KolamScreen() {
 
       {/* ── Fixed Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.headerTitle}>Kolam Saya</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>Kolam Saya</Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+            <MaterialIcons name="logout" size={24} color={C.onPrimary} />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerGreeting}>Halo, {username || 'Petambak'} 👋</Text>
       </View>
 
@@ -222,6 +238,10 @@ export default function KolamScreen() {
         { paddingBottom: BOTTOM_NAV_HEIGHT + 24 },
         (loading || ponds.length === 0) && styles.centerContent
       ]}>
+        {/* Faded Background Logo */}
+        <View style={styles.bgImageContainer} pointerEvents="none">
+          <Image source={logoImg} style={styles.bgImage} />
+        </View>
         {loading ? (
           <ActivityIndicator size="large" color={C.primary} />
         ) : ponds.length === 0 ? (
@@ -264,6 +284,11 @@ export default function KolamScreen() {
                 <MaterialIcons name="chevron-right" size={24} color={C.outline} />
               </TouchableOpacity>
             ))}
+
+            <View style={[styles.infoRow, { justifyContent: 'center', marginVertical: 12 }]}>
+              <MaterialIcons name="info-outline" size={14} color={C.outline} style={{ opacity: 0.7 }} />
+              <Text style={styles.infoText}>Butuh bantuan pengaturan?</Text>
+            </View>
           </ScrollView>
         )}
       </View>
@@ -318,6 +343,16 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: C.primaryFixedDim,
     marginTop: 2,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoutButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // ── Content ──
@@ -499,5 +534,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: C.onSurfaceVariant,
     textTransform: 'capitalize',
+  },
+  bgImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bgImage: {
+    width: 450,
+    height: 450,
+    opacity: 0.15,
+    borderRadius: 225,
   },
 });
