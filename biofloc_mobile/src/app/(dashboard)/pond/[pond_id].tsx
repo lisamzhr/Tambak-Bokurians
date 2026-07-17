@@ -38,7 +38,6 @@ const C = {
 const TABS = [
   { key: 'readings', label: 'Grafik' },
   { key: 'input', label: 'Input Manual' },
-  { key: 'health', label: 'AI Kesehatan' },
   { key: 'setup', label: 'AI Setup' },
   { key: 'maturity', label: 'AI Maturitas' },
 ];
@@ -87,7 +86,6 @@ export default function PondDetailScreen() {
       <View style={styles.content}>
         {activeTab === 'readings' && <TabReadings pondId={pond_id} />}
         {activeTab === 'input' && <TabInput pondId={pond_id} />}
-        {activeTab === 'health' && <TabAIHealth pondId={pond_id} />}
         {activeTab === 'setup' && <TabAISetup pondId={pond_id} />}
         {activeTab === 'maturity' && <TabAIMaturity pondId={pond_id} />}
       </View>
@@ -396,108 +394,6 @@ function TabInput({ pondId }: { pondId: string }) {
   );
 }
 
-function TabAIHealth({ pondId }: { pondId: string }) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    aiService.getAIHealth(pondId)
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [pondId]);
-
-  if (loading) return <CenterLoader />;
-  if (error) return <EmptyState text={error} />;
-
-  const pondData = data?.ponds?.[pondId];
-  const profile = data?.profile;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'safe': return C.success;
-      case 'warning': return C.warning;
-      case 'danger': return C.error;
-      default: return C.outline;
-    }
-  };
-
-  const getScoreColor = (label: string) => {
-    if (label === 'Baik') return C.success;
-    if (label === 'Waspada') return C.warning;
-    return C.error;
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.tabScrollContent}>
-      {/* Profile Header */}
-      {profile && (
-        <View style={styles.setupHeader}>
-          <MaterialIcons name="info-outline" size={24} color={C.primary} />
-          <View style={{flex: 1}}>
-            <Text style={styles.setupSpecies}>{profile.species}</Text>
-            <Text style={styles.setupVolume}>Profile: {profile.id}</Text>
-            {profile.source && (
-              <Text style={{ fontSize: 11, color: C.outline, fontStyle: 'italic', marginTop: 8, lineHeight: 16 }}>
-                Sumber referensi: {profile.source}
-              </Text>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Empty State or Predictions */}
-      {!pondData ? (
-        <View style={[styles.card, { alignItems: 'center', paddingVertical: 40, borderStyle: 'dashed' }]}>
-          <MaterialIcons name="analytics" size={48} color={C.outlineVariant} style={{ marginBottom: 16 }} />
-          <Text style={[styles.cardTitle, { textAlign: 'center', marginBottom: 8 }]}>Belum Ada Prediksi</Text>
-          <Text style={[styles.cardText, { textAlign: 'center' }]}>
-            AI belum dapat menghasilkan prediksi untuk kolam ini. Pastikan data sensor atau input manual air telah dimasukkan dalam jumlah yang cukup (minimal 1 hari data lengkap).
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* Score Card */}
-          <View style={[styles.card, { alignItems: 'center', paddingVertical: 32 }]}>
-            <View style={[styles.scoreCircle, { borderColor: getScoreColor(pondData.health_label) }]}>
-              <Text style={[styles.scoreText, { color: getScoreColor(pondData.health_label) }]}>{pondData.health_score}</Text>
-            </View>
-            <Text style={styles.scoreLabel}>{pondData.health_label}</Text>
-          </View>
-
-          {/* Predictions Grid */}
-          <Text style={styles.sectionTitle}>Parameter Air</Text>
-          <View style={styles.gridContainer}>
-            {Object.entries(pondData.predictions || {}).map(([key, value]: any) => {
-              const status = pondData.status?.[key] || 'unknown';
-              return (
-                <View key={key} style={styles.gridItem}>
-                  <View style={styles.gridHeader}>
-                    <Text style={styles.gridLabel}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
-                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(status) }]} />
-                  </View>
-                  <Text style={styles.gridValue}>{value}</Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Recommendations */}
-          <Text style={styles.sectionTitle}>Rekomendasi Tindakan</Text>
-          <View style={styles.card}>
-            {(pondData.recommendations || []).map((rec: string, idx: number) => (
-              <View key={idx} style={styles.listItem}>
-                <MaterialIcons name="chevron-right" size={20} color={C.primary} style={{marginTop: 2}} />
-                <Text style={styles.listText}>{rec}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      )}
-    </ScrollView>
-  );
-}
 
 function TabAISetup({ pondId }: { pondId: string }) {
   const [data, setData] = useState<any>(null);
@@ -520,63 +416,134 @@ function TabAISetup({ pondId }: { pondId: string }) {
     return (
       <ScrollView contentContainerStyle={styles.tabScrollContent}>
         <View style={styles.card}>
-           <Text style={styles.emptyText}>Tidak ada rekomendasi setup tersedia.</Text>
+          <Text style={styles.emptyText}>Tidak ada rekomendasi setup tersedia.</Text>
         </View>
       </ScrollView>
     );
   }
 
+  const stocking = rec.stocking;
+  const inoculum = rec.inoculum;
+  const carbon = rec.carbon_dosing;
+
   return (
     <ScrollView contentContainerStyle={styles.tabScrollContent}>
-      {/* Header Info */}
-      <View style={styles.setupHeader}>
-        <MaterialIcons name="info-outline" size={24} color={C.primary} />
-        <View style={{flex: 1}}>
-          <Text style={styles.setupSpecies}>{data.species}</Text>
-          <Text style={styles.setupVolume}>Volume: {data.pond_volume_liters} L</Text>
-        </View>
-      </View>
 
-      {/* Stocking */}
-      <Text style={styles.sectionTitle}>Tebar Benih</Text>
-      <View style={styles.card}>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Jumlah Bibit</Text>
-          <Text style={styles.statValue}>{rec.stocking?.jumlah_bibit_ekor} ekor</Text>
+      {/* ── Section 1: Profile Kolam ──────────────────────────────────────── */}
+      <View style={styles.setupProfileCard}>
+        <View style={styles.setupIconBox}>
+          <MaterialIcons name="water" size={24} color={C.primary} />
         </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Berat Awal</Text>
-          <Text style={styles.statValue}>{rec.stocking?.berat_awal_per_ekor_g} g</Text>
-        </View>
-        <View style={styles.statRow}>
-          <Text style={styles.statLabel}>Total Biomassa</Text>
-          <Text style={styles.statValue}>{rec.stocking?.total_biomassa_tebar_g} g</Text>
-        </View>
-        <Text style={styles.noteText}>{rec.stocking?.note}</Text>
-      </View>
-
-      {/* Water Prep */}
-      <Text style={styles.sectionTitle}>Persiapan Air (Inokulum & Karbon)</Text>
-      <View style={styles.card}>
-        <View style={styles.listItem}>
-          <MaterialIcons name="science" size={20} color={C.primary} style={{marginTop: 2}} />
-          <Text style={styles.listText}>{rec.inoculum?.note}</Text>
-        </View>
-        <View style={[styles.listItem, { marginTop: 12 }]}>
-          <MaterialIcons name="eco" size={20} color={C.primary} style={{marginTop: 2}} />
-          <View style={{flex: 1}}>
-            <Text style={[styles.listText, {fontWeight: 'bold'}]}>Target C:N Ratio: {rec.carbon_dosing?.cn_ratio_target}:1</Text>
-            <Text style={styles.listText}>{rec.carbon_dosing?.note}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.setupProfileSpecies} numberOfLines={2}>{data.species}</Text>
+          <View style={styles.setupProfileMeta}>
+            <MaterialIcons name="crop-free" size={14} color={C.onSurfaceVariant} />
+            <Text style={styles.setupProfileMetaText}>Vol: {data.pond_volume_liters} L</Text>
           </View>
         </View>
       </View>
 
-      {/* Timeline */}
-      <Text style={styles.sectionTitle}>Estimasi Maturitas</Text>
-      <View style={styles.card}>
-        <Text style={styles.timelineText}><Text style={{fontWeight: 'bold', color: C.onSurface}}>Waktu:</Text> {rec.estimated_maturity}</Text>
-        <Text style={styles.timelineText}><Text style={{fontWeight: 'bold', color: C.onSurface}}>Next step:</Text> {rec.next_step}</Text>
+      {/* ── Section 2: Tebar Benih ────────────────────────────────────────── */}
+      <Text style={styles.setupSectionLabel}>TARGET TEBAR BENIH</Text>
+      <View style={styles.setupStockCard}>
+        {/* Left accent bar */}
+        <View style={styles.setupStockAccent} />
+        <View style={{ flex: 1 }}>
+          <View style={styles.setupStockRow}>
+            <View style={styles.setupStockStat}>
+              <Text style={styles.setupStockStatLabel}>Jumlah Bibit</Text>
+              <View style={styles.setupStockStatValue}>
+                <Text style={styles.setupStockBigNum}>{stocking?.jumlah_bibit_ekor?.toLocaleString()}</Text>
+                <Text style={styles.setupStockUnit}>ekor</Text>
+              </View>
+            </View>
+            <View style={styles.setupStockStat}>
+              <Text style={styles.setupStockStatLabel}>Berat Awal</Text>
+              <View style={styles.setupStockStatValue}>
+                <Text style={[styles.setupStockBigNum, { color: C.onSurface }]}>{stocking?.berat_awal_per_ekor_g}</Text>
+                <Text style={styles.setupStockUnit}>g/ekor</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.setupStockDivider} />
+          <View style={styles.setupBiomassRow}>
+            <View>
+              <Text style={styles.setupStockStatLabel}>Total Biomassa</Text>
+              <Text style={styles.setupBiomassValue}>
+                {stocking?.total_biomassa_tebar_g != null
+                  ? `${(stocking.total_biomassa_tebar_g / 1000).toFixed(2)} kg`
+                  : '-'}
+              </Text>
+            </View>
+            {stocking?.densitas_acuan_per_m3 != null && (
+              <View style={styles.setupDensityChip}>
+                <MaterialIcons name="bolt" size={16} color={C.primary} />
+                <Text style={styles.setupDensityText}>
+                  {stocking.densitas_acuan_per_m3} ekor/m³
+                </Text>
+              </View>
+            )}
+          </View>
+          {stocking?.note ? (
+            <Text style={styles.setupNoteText}>{stocking.note}</Text>
+          ) : null}
+        </View>
       </View>
+
+      {/* ── Section 3: Persiapan Air ──────────────────────────────────────── */}
+      <Text style={styles.setupSectionLabel}>PERSIAPAN AIR (BIOFLOC)</Text>
+      <View style={styles.setupWaterCard}>
+        {/* C:N ratio chip */}
+        {carbon?.cn_ratio_target != null && (
+          <View style={styles.setupCNRow}>
+            <View style={styles.setupCNChip}>
+              <Text style={styles.setupCNLabel}>Target C:N Ratio</Text>
+              <Text style={styles.setupCNValue}>{carbon.cn_ratio_target}:1</Text>
+            </View>
+            <View style={styles.setupCNNote}>
+              <MaterialIcons name="eco" size={16} color={C.primary} />
+              <Text style={styles.setupCNNoteText} numberOfLines={3}>{carbon.note}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Inoculum tip */}
+        {inoculum?.note ? (
+          <View style={styles.setupInoculumTip}>
+            <MaterialIcons name="lightbulb" size={20} color={C.primary} />
+            <Text style={styles.setupInoculumText}>{inoculum.note}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* ── Section 4: Estimasi Maturitas ─────────────────────────────────── */}
+      {(rec.estimated_maturity || rec.next_step) && (
+        <>
+          <Text style={styles.setupSectionLabel}>STATUS PERSIAPAN</Text>
+          <View style={styles.card}>
+            {rec.estimated_maturity ? (
+              <View style={styles.listItem}>
+                <MaterialIcons name="schedule" size={20} color={C.primary} style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.setupStockStatLabel, { marginBottom: 4 }]}>Estimasi Maturitas</Text>
+                  <Text style={styles.listText}>{rec.estimated_maturity}</Text>
+                </View>
+              </View>
+            ) : null}
+            {rec.next_step ? (
+              <View style={[styles.listItem, { marginTop: rec.estimated_maturity ? 12 : 0 }]}>
+                <MaterialIcons name="send" size={20} color={C.primary} style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.setupStockStatLabel, { marginBottom: 4 }]}>Langkah Berikutnya</Text>
+                  <Text style={styles.listText}>{rec.next_step}</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </>
+      )}
+
     </ScrollView>
   );
 }
@@ -873,6 +840,214 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: C.onSurfaceVariant,
   },
+  setupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surfaceContainer,
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 8,
+  },
+
+  // ─── REDESIGNED AI SETUP STYLES ───────────────────────────────────────────
+  setupProfileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: C.outlineVariant,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  setupIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: C.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setupProfileSpecies: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: C.onSurface,
+    lineHeight: 20,
+  },
+  setupProfileMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  setupProfileMetaText: {
+    fontSize: 12,
+    color: C.onSurfaceVariant,
+  },
+  setupSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.outline,
+    letterSpacing: 1,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  setupStockCard: {
+    flexDirection: 'row',
+    backgroundColor: C.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: C.outlineVariant,
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingRight: 16,
+    paddingVertical: 16,
+    gap: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  setupStockAccent: {
+    width: 6,
+    backgroundColor: C.primary,
+    borderTopRightRadius: 3,
+    borderBottomRightRadius: 3,
+    marginRight: 14,
+  },
+  setupStockRow: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  setupStockStat: {
+    flex: 1,
+  },
+  setupStockStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.outline,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  setupStockStatValue: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  setupStockBigNum: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: C.primary,
+    lineHeight: 32,
+  },
+  setupStockUnit: {
+    fontSize: 13,
+    color: C.onSurfaceVariant,
+    marginBottom: 2,
+  },
+  setupStockDivider: {
+    height: 1,
+    backgroundColor: C.surfaceContainer,
+    marginVertical: 14,
+  },
+  setupBiomassRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  setupBiomassValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: C.onSurface,
+    marginTop: 2,
+  },
+  setupDensityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: C.surfaceContainer,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  setupDensityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.onSurfaceVariant,
+  },
+  setupNoteText: {
+    fontSize: 12,
+    color: C.outline,
+    fontStyle: 'italic',
+    marginTop: 12,
+    lineHeight: 18,
+  },
+  setupWaterCard: {
+    backgroundColor: C.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: C.outlineVariant,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  setupCNRow: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: C.surfaceContainer,
+    alignItems: 'flex-start',
+  },
+  setupCNChip: {
+    backgroundColor: C.surfaceContainer,
+    borderRadius: 12,
+    padding: 12,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  setupCNLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: C.outline,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  setupCNValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: C.onSurface,
+  },
+  setupCNNote: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  setupCNNoteText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: C.onSurfaceVariant,
+  },
+  setupInoculumTip: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14,
+    backgroundColor: C.primary + '0d',
+    borderTopWidth: 1,
+    borderTopColor: C.outlineVariant,
+  },
+  setupInoculumText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: C.onSurface,
+    fontStyle: 'italic',
+  },
+  // keep old keys for any remaining usages in other tabs
   setupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
